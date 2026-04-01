@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// CyberHacker Security System - RAP UNIVERSE
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  passwordHash  String   // Hashé avec bcrypt
+  role          String   @default("SCANNER") // SCANNER, MANAGER, SUPER_ADMIN
+  isActive      Boolean  @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  sessions      Session[]
+  scanLogs      ScanLog[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  adminId      String
+  admin        Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  token        String   @unique // JWT token
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+}
+
+model Ticket {
+  id            String    @id @default(cuid())
+  ticketCode    String    @unique // Code unique crypté pour le QR
+  shortCode     String    @unique // Code court lisible (ex: RU-2026-A1B2C)
+  name          String
+  email         String
+  phone         String?
+  ticketType    String    // STANDARD, VIP, PREMIUM
+  price         Float     // Prix en FCFA
+  isUsed        Boolean   @default(false)
+  usedAt        DateTime?
+  usedBy        String?   // ID de l'admin qui a scanné
+  purchaseIp    String?   // IP de l'acheteur (sécurité)
+  userAgent     String?   // Navigateur de l'acheteur
+  securityHash  String    // Hash de vérification d'intégrité
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  scanLogs      ScanLog[]
+}
+
+model ScanLog {
+  id          String   @id @default(cuid())
+  ticketId    String?
+  ticket      Ticket?  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  adminId     String?
+  admin       Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  action      String   // SCAN_SUCCESS, SCAN_DUPLICATE, SCAN_INVALID, LOGIN, LOGOUT
+  details     String?  // JSON avec détails
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
+model EventConfig {
+  id          String   @id @default(cuid())
+  eventName   String
+  eventDate   String
+  eventTime   String
+  eventVenue  String
+  maxTickets  Int
+  isLocked    Boolean  @default(false) // Verrouiller les ventes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
